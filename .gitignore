@@ -4,3 +4,6 @@
 venv
 .venv
 Venv
+
+dqn/__pycache__
+game/__pycache__
