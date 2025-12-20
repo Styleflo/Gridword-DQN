@@ -1,17 +1,23 @@
+from collections import deque
+from random import randint
+import numpy as np
 import pygame
 import sys
-import numpy as np
 
 class GridWorld5x5:
-    def __init__(self):
+    def __init__(self, max_steps=float('inf')):
         self.success = False
+        self.max_steps = max_steps
+        self.steps = 0
+
         self.grid_size = 5
-        self.cell_size = 100
+        self.cell_size = 700 // self.grid_size
         self.window_size = self.grid_size * self.cell_size
 
         self.start_pos = (0, 0)
-        self.goal_pos = (4, 4)
-        self.obstacles = [(1, 1), (2, 4), (3, 2)]
+        self.goal_pos = (self.grid_size -1, self.grid_size -1)
+        self.obstacles = None
+        self.generateObstacles()
 
         self.action_space = 4
         self.state_space = self.grid_size * self.grid_size
@@ -28,19 +34,79 @@ class GridWorld5x5:
         self.clock = pygame.time.Clock()
         self.reset()
 
+    def generateObstacles(self):
+        nb_obstacles = (self.grid_size ** 2) * 20 // 100
+
+        def path_exists(obstacles_set):
+            visited = set()
+            queue = deque([self.start_pos])
+            visited.add(self.start_pos)
+
+            while queue:
+                x, y = queue.popleft()
+
+                if (x, y) == self.goal_pos:
+                    return True
+
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nx, ny = x + dx, y + dy
+
+                    if (
+                            0 <= nx < self.grid_size and
+                            0 <= ny < self.grid_size and
+                            (nx, ny) not in obstacles_set and
+                            (nx, ny) not in visited
+                    ):
+                        visited.add((nx, ny))
+                        queue.append((nx, ny))
+
+            return False
+
+        # Génération jusqu'à avoir un chemin valide
+        while True:
+            obstacles = set()
+
+            while len(obstacles) < nb_obstacles:
+                x = randint(0, self.grid_size - 1)
+                y = randint(0, self.grid_size - 1)
+                pos = (x, y)
+
+                if pos != self.start_pos and pos != self.goal_pos:
+                    obstacles.add(pos)
+
+            if path_exists(obstacles):
+                self.obstacles = list(obstacles)
+                break
+
     def reset(self):
         self.success = False
+        self.steps = 0
+        x = randint(0, self.grid_size - 1)
+        y = randint(0, self.grid_size - 1)
+        self.start_pos = (x, y)
         self.agent_pos = self.start_pos
+        self.generateObstacles()
         return self._get_state()
 
     def _get_state(self):
         state = np.zeros(self.grid_size * self.grid_size, dtype=np.float32)
         x, y = self.agent_pos
         state[x * self.grid_size + y] = 1.0
+
+        for (x, y) in self.obstacles:
+            state[x * self.grid_size + y] = -1.0
+
+        ax, ay = self.goal_pos
+        state[ax * self.grid_size + ay] = 2.0
         return state
 
     def step(self, action):
         x, y = self.agent_pos
+        self.steps += 1
+
+        old_pos = (x,y)
+        gx, gy = self.goal_pos
+        old_dist = abs(x - gx) + abs(y - gy)
 
         if action == 0:      # Haut
             x -= 1
@@ -56,17 +122,23 @@ class GridWorld5x5:
             x, y = self.agent_pos
 
         new_pos = (x, y)
+        new_dist = abs(x - gx) + abs(y - gy)
+        reward = -0.5
 
         if new_pos in self.obstacles:
-            reward = -10
+            reward += -10
             done = True
         elif new_pos == self.goal_pos:
-            reward = 10
+            reward += 200
             self.success = True
             done = True
+
         else:
-            reward = -0.1
+            reward += 3 * (old_dist - new_dist)
             done = False
+
+        if self.steps >= self.max_steps:
+            done = True
 
         self.agent_pos = new_pos
         return self._get_state(), reward, done
@@ -88,20 +160,20 @@ class GridWorld5x5:
         # Obstacles
         for (x, y) in self.obstacles:
             rect = pygame.Rect(
-                y * self.cell_size,
-                x * self.cell_size,
-                self.cell_size,
-                self.cell_size
+                y * self.cell_size + 2,
+                x * self.cell_size + 2,
+                self.cell_size - 4,
+                self.cell_size -4
             )
             pygame.draw.rect(self.screen, (200, 0, 0), rect)
 
         # Objectif
         gx, gy = self.goal_pos
         rect = pygame.Rect(
-            gy * self.cell_size,
-            gx * self.cell_size,
-            self.cell_size,
-            self.cell_size
+            gy * self.cell_size + 2,
+            gx * self.cell_size + 2,
+            self.cell_size - 4,
+            self.cell_size - 4
         )
         pygame.draw.rect(self.screen, (0, 200, 0), rect)
 

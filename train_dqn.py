@@ -5,14 +5,14 @@ import pygame
 import torch
 import time
 
-env = GridWorld5x5()
+env = GridWorld5x5(max_steps=1000)
 state = env.reset()
 
 done = False
 
-print("=== DÉBUT DE L'ENTRAINEMENT DQN ===")
-rewards = train_dqn(env, episodes=2000)
-print("=== FIN DE L'ENTRAINEMENT DQN ===")
+# print("=== DÉBUT DE L'ENTRAINEMENT DQN ===")
+# rewards = train_dqn(env, episodes=5000)
+# print("=== FIN DE L'ENTRAINEMENT DQN ===")
 
 # ==============================
 # 1. INIT PYGAME

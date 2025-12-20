@@ -19,8 +19,8 @@ class DQNAgent:
 
         self.gamma = 0.99
         self.epsilon = 1.0
-        self.epsilon_min = 0.05
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.1
+        self.epsilon_decay = 0.999
         self.learning_rate = 1e-3
         self.batch_size = 64
 
@@ -77,6 +77,7 @@ def train_dqn(env, episodes=500):
 
     for episode in range(episodes):
         state = env.reset()
+
         total_reward = 0
         done = False
 
